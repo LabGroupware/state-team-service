@@ -172,7 +172,7 @@ public class TeamService extends BaseService {
             List<String> existUserIds = existUsers.stream()
                     .map(TeamUserEntity::getUserId)
                     .toList();
-            throw new AlreadyExistTeamUserException(existUserIds);
+            throw new AlreadyExistTeamUserException(teamId, existUserIds);
         }
         List<TeamUserEntity> users = userIds.stream()
                 .map(userId -> {

@@ -15,7 +15,7 @@ spring:
     baseline-version: 0
 grpc:
   server:
-    port: ${ORGANIZATION_SERVICE_GRPC_PORT:9050} # default: 9090
+    port: ${TEAM_SERVICE_GRPC_PORT:9050} # default: 9090
   client:
     jobService:
       address: dns:///${JOB_SERVICE_HOST:localhost}:${JOB_SERVICE_GRPC_PORT:9100}

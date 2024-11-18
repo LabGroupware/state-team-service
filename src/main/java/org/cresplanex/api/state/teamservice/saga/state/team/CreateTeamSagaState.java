@@ -18,7 +18,6 @@ public class CreateTeamSagaState
         extends SagaState<CreateTeamSaga.Action, TeamEntity> {
     private InitialData initialData;
     private TeamWithUsersDto teamWithUsersDto = TeamWithUsersDto.empty();
-    private TeamDto teamDto = TeamDto.empty();
     private String operatorId;
 
     @Override

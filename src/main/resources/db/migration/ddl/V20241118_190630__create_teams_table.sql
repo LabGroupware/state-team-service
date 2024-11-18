@@ -5,9 +5,9 @@ CREATE TABLE teams (
         name VARCHAR(255) NOT NULL,
         description TEXT,
         is_default BOOLEAN DEFAULT FALSE NOT NULL,
-        created_at date NOT NULL,
+        created_at TIMESTAMP NOT NULL,
         created_by varchar(50) NOT NULL,
-        updated_at date DEFAULT NULL,
+        updated_at TIMESTAMP DEFAULT NULL,
         updated_by varchar(50) DEFAULT NULL
 );
 
