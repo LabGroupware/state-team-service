@@ -18,7 +18,7 @@ import org.cresplanex.api.state.teamservice.event.publisher.TeamDomainEventPubli
 import org.cresplanex.api.state.teamservice.saga.proxy.TeamServiceProxy;
 import org.cresplanex.api.state.teamservice.saga.proxy.OrganizationServiceProxy;
 import org.cresplanex.api.state.teamservice.saga.state.team.AddUsersTeamSagaState;
-import org.cresplanex.api.state.teamservice.service.TeamService;
+import org.cresplanex.api.state.teamservice.service.TeamLocalValidateService;
 import org.cresplanex.core.saga.orchestration.SagaDefinition;
 import org.springframework.stereotype.Component;
 
@@ -31,10 +31,10 @@ public class AddUsersTeamSaga extends SagaModel<
 
     private final SagaDefinition<AddUsersTeamSagaState> sagaDefinition;
     private final TeamDomainEventPublisher domainEventPublisher;
-    private final TeamService teamLocalService;
+    private final TeamLocalValidateService teamLocalService;
 
     public AddUsersTeamSaga(
-            TeamService teamLocalService,
+            TeamLocalValidateService teamLocalService,
             TeamServiceProxy teamService,
             OrganizationServiceProxy organizationService,
             TeamDomainEventPublisher domainEventPublisher

@@ -14,7 +14,6 @@ import org.cresplanex.api.state.teamservice.constants.ReservedTeamName;
 import org.cresplanex.api.state.teamservice.entity.TeamEntity;
 import org.cresplanex.api.state.teamservice.entity.TeamUserEntity;
 import org.cresplanex.api.state.teamservice.exception.AlreadyExistTeamUserException;
-import org.cresplanex.api.state.teamservice.exception.NotFoundTeamUserException;
 import org.cresplanex.api.state.teamservice.exception.TeamNotFoundException;
 import org.cresplanex.api.state.teamservice.repository.TeamRepository;
 import org.cresplanex.api.state.teamservice.repository.TeamUserRepository;
@@ -117,17 +116,6 @@ public class TeamService extends BaseService {
         return jobId;
     }
 
-    public void validateCreatedTeam(String organizationId, String name, String description)
-            throws AlreadyExistTeamNameInOrganizationException, ReservedTeamNameException {
-        if (Arrays.asList(ReservedTeamName.ALL).contains(name)) {
-            throw new ReservedTeamNameException(List.of(name));
-        }
-        teamRepository.findByOrganizationIdAndName(organizationId, name)
-                .ifPresent(organization -> {
-                    throw new AlreadyExistTeamNameInOrganizationException(organizationId, List.of(name));
-                });
-    }
-
     public void validateTeams(List<String> teamIds)
             throws NotFoundTeamException {
         List<TeamEntity> teams =  teamRepository.findAllById(teamIds);
@@ -139,26 +127,6 @@ public class TeamService extends BaseService {
 
             throw new NotFoundTeamException(notFoundTeamIds);
         }
-    }
-
-    public TeamEntity validateTeam(String teamId, String actionType)
-            throws NotFoundTeamException {
-        TeamEntity teamEntity = teamRepository.findById(teamId)
-                .orElseThrow(() -> new NotFoundTeamException(List.of(teamId)));
-        if (teamEntity.isDefault()){
-            switch (actionType) {
-                case ActionOnTeam.UPDATE_PROFILE:
-                    throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.UPDATE_PROFILE);
-                case ActionOnTeam.DELETE:
-                    throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.DELETE);
-                case ActionOnTeam.ADD_USERS:
-                    throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.ADD_USERS);
-                case ActionOnTeam.REMOVE_USERS:
-                    throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.REMOVE_USERS);
-            }
-        }
-
-        return teamEntity;
     }
 
     public TeamEntity createAndAddUsers(String operatorId, TeamEntity organization) {
