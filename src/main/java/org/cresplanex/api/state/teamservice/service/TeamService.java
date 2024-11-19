@@ -2,15 +2,8 @@ package org.cresplanex.api.state.teamservice.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.cresplanex.api.state.common.saga.local.LocalException;
-import org.cresplanex.api.state.common.saga.local.organization.InvalidOrganizationPlanException;
-import org.cresplanex.api.state.common.saga.local.organization.NotFoundOrganizationException;
-import org.cresplanex.api.state.common.saga.local.team.AlreadyExistTeamNameInOrganizationException;
-import org.cresplanex.api.state.common.saga.local.team.NotAllowedOnDefaultTeamException;
 import org.cresplanex.api.state.common.saga.local.team.NotFoundTeamException;
-import org.cresplanex.api.state.common.saga.local.team.ReservedTeamNameException;
 import org.cresplanex.api.state.common.service.BaseService;
-import org.cresplanex.api.state.teamservice.constants.ActionOnTeam;
-import org.cresplanex.api.state.teamservice.constants.ReservedTeamName;
 import org.cresplanex.api.state.teamservice.entity.TeamEntity;
 import org.cresplanex.api.state.teamservice.entity.TeamUserEntity;
 import org.cresplanex.api.state.teamservice.exception.AlreadyExistTeamUserException;
@@ -28,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -44,14 +36,14 @@ public class TeamService extends BaseService {
     private final AddUsersTeamSaga addUsersTeamSaga;
 
     @Transactional(readOnly = true)
-    public TeamEntity findById(String organizationId) {
-        return internalFindById(organizationId);
+    public TeamEntity findById(String teamId) {
+        return internalFindById(teamId);
     }
 
-    private TeamEntity internalFindById(String organizationId) {
-        return teamRepository.findById(organizationId).orElseThrow(() -> new TeamNotFoundException(
+    private TeamEntity internalFindById(String teamId) {
+        return teamRepository.findById(teamId).orElseThrow(() -> new TeamNotFoundException(
                 TeamNotFoundException.FindType.BY_ID,
-                organizationId
+                teamId
         ));
     }
 
@@ -129,36 +121,40 @@ public class TeamService extends BaseService {
         }
     }
 
-    public TeamEntity createAndAddUsers(String operatorId, TeamEntity organization) {
-        return teamRepository.save(organization);
+    public TeamEntity createAndAddUsers(String operatorId, TeamEntity team, List<TeamUserEntity> users) {
+        team = teamRepository.save(team);
+        TeamEntity finalTeam = team;
+        users = users.stream()
+                .peek(user -> user.setTeam(finalTeam))
+                .toList();
+        teamUserRepository.saveAll(users);
+        team.setTeamUsers(users);
+        return team;
     }
 
-    public List<TeamUserEntity> addUsers(String operatorId, String teamId, List<String> userIds) {
+    public List<TeamUserEntity> addUsers(String operatorId, String teamId, List<TeamUserEntity> users) {
         List<TeamUserEntity> existUsers = teamUserRepository.
-                findAllByTeamIdAndUserIds(teamId, userIds);
+                findAllByTeamIdAndUserIds(teamId, users.stream()
+                        .map(TeamUserEntity::getUserId)
+                        .toList());
         if (!existUsers.isEmpty()) {
             List<String> existUserIds = existUsers.stream()
                     .map(TeamUserEntity::getUserId)
                     .toList();
             throw new AlreadyExistTeamUserException(teamId, existUserIds);
         }
-        List<TeamUserEntity> users = userIds.stream()
-                .map(userId -> {
-                    TeamUserEntity user = new TeamUserEntity();
-                    user.setTeamId(teamId);
-                    user.setUserId(userId);
-                    return user;
-                })
-                .toList();
         return teamUserRepository.saveAll(users);
     }
 
-    public List<TeamUserEntity> addUsersToDefault(String operatorId, String organizationId, List<String> userIds) {
-        TeamEntity teamEntity = teamRepository.findByOrganizationIdAndIsDefault(organizationId, true).orElseThrow(() -> new TeamNotFoundException(
+    public List<TeamUserEntity> addUsersToDefault(String operatorId, String teamId, List<TeamUserEntity> users) {
+        TeamEntity teamEntity = teamRepository.findByOrganizationIdAndIsDefault(teamId, true).orElseThrow(() -> new TeamNotFoundException(
                 TeamNotFoundException.FindType.BY_ORGANIZATION_ID_AND_IS_DEFAULT,
-                organizationId
+                teamId
         ));
-        return addUsers(operatorId, teamEntity.getTeamId(), userIds);
+        users = users.stream()
+                .peek(user -> user.setTeam(teamEntity))
+                .toList();
+        return addUsers(operatorId, teamEntity.getTeamId(), users);
     }
 
     public void undoCreate(String teamId) {
@@ -170,7 +166,7 @@ public class TeamService extends BaseService {
         teamRepository.delete(team);
     }
 
-    public void undoAddUsers(List<String> organizationUserIds) {
-        teamUserRepository.deleteAllById(organizationUserIds);
+    public void undoAddUsers(List<String> teamUserIds) {
+        teamUserRepository.deleteAllById(teamUserIds);
     }
 }

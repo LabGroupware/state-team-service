@@ -117,8 +117,7 @@ public class TeamSagaCommandHandlers {
                 userEntity.setUserId(user.getUserId());
                 return userEntity;
             }).toList();
-            team.setTeamUsers(users);
-            team = teamService.createAndAddUsers(command.getOperatorId(), team);
+            team = teamService.createAndAddUsers(command.getOperatorId(), team, users);
             CreateTeamAndAddInitialTeamUserReply.Success reply = new CreateTeamAndAddInitialTeamUserReply.Success(
                     new CreateTeamAndAddInitialTeamUserReply.Success.Data(
                             DtoMapper.convert(team),
@@ -157,8 +156,7 @@ public class TeamSagaCommandHandlers {
                 userEntity.setUserId(user.getUserId());
                 return userEntity;
             }).toList();
-            team.setTeamUsers(users);
-            team = teamService.createAndAddUsers(command.getOperatorId(), team);
+            team = teamService.createAndAddUsers(command.getOperatorId(), team, users);
             CreateDefaultTeamAndAddInitialDefaultTeamUserReply.Success reply = new CreateDefaultTeamAndAddInitialDefaultTeamUserReply.Success(
                     new CreateDefaultTeamAndAddInitialDefaultTeamUserReply.Success.Data(
                             DtoMapper.convert(team),
@@ -213,7 +211,12 @@ public class TeamSagaCommandHandlers {
     ) {
         try {
             AddUsersTeamCommand.Exec command = cmd.getCommand();
-            List<String> users = command.getUsers().stream().map(AddUsersTeamCommand.Exec.User::getUserId).toList();
+            List<TeamUserEntity> users = command.getUsers().stream().map(user -> {
+                TeamUserEntity userEntity = new TeamUserEntity();
+                userEntity.setUserId(user.getUserId());
+                userEntity.setTeamId(command.getTeamId());
+                return userEntity;
+            }).toList();
 
             List<TeamUserEntity> teamUsers = teamService.addUsers(command.getOperatorId(), command.getTeamId(), users);
             AddUsersTeamReply.Success reply = new AddUsersTeamReply.Success(
@@ -249,7 +252,11 @@ public class TeamSagaCommandHandlers {
     ) {
         try {
             AddUsersDefaultTeamCommand.Exec command = cmd.getCommand();
-            List<String> users = command.getUsers().stream().map(AddUsersDefaultTeamCommand.Exec.User::getUserId).toList();
+            List<TeamUserEntity> users = command.getUsers().stream().map(user -> {
+                TeamUserEntity userEntity = new TeamUserEntity();
+                userEntity.setUserId(user.getUserId());
+                return userEntity;
+            }).toList();
 
             List<TeamUserEntity> teamUsers = teamService.addUsersToDefault(command.getOperatorId(), command.getOrganizationId(), users);
             AddUsersDefaultTeamReply.Success reply = new AddUsersDefaultTeamReply.Success(
@@ -306,7 +313,14 @@ public class TeamSagaCommandHandlers {
         try {
             TeamExistValidateCommand command = cmd.getCommand();
             teamService.validateTeams(command.getTeamIds());
-            return withSuccess();
+            return withSuccess(
+                    new TeamExistValidateReply.Success(
+                            null,
+                            TeamServiceApplicationCode.SUCCESS,
+                            "Team exist validate successfully",
+                            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                    ), TeamExistValidateReply.Success.TYPE
+            );
         } catch (NotFoundTeamException e) {
             TeamExistValidateReply.Failure reply = new TeamExistValidateReply.Failure(
                     new TeamExistValidateReply.Failure.TeamNotFound(e.getTeamIds()),
