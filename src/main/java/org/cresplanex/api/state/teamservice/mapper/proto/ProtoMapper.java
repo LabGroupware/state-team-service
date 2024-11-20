@@ -1,6 +1,9 @@
 package org.cresplanex.api.state.teamservice.mapper.proto;
 
+import build.buf.gen.organization.v1.OrganizationOnUser;
+import build.buf.gen.organization.v1.OrganizationWithUsers;
 import build.buf.gen.team.v1.Team;
+import build.buf.gen.team.v1.TeamOnUser;
 import build.buf.gen.team.v1.TeamWithUsers;
 import build.buf.gen.team.v1.UserOnTeam;
 import org.cresplanex.api.state.common.utils.ValueFromNullable;
@@ -38,6 +41,19 @@ public class ProtoMapper {
         return TeamWithUsers.newBuilder()
                 .setTeam(convert(teamEntity))
                 .addAllUsers(convert(userOnTeamEntities))
+                .build();
+    }
+
+    public static TeamOnUser convertOnUser(TeamUserEntity teamUserEntity) {
+        return TeamOnUser.newBuilder()
+                .setTeam(convert(teamUserEntity.getTeam()))
+                .build();
+    }
+
+    public static TeamWithUsers convertWithUsers(TeamEntity teamEntity) {
+        return TeamWithUsers.newBuilder()
+                .setTeam(convert(teamEntity))
+                .addAllUsers(convert(teamEntity.getTeamUsers()))
                 .build();
     }
 }

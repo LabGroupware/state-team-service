@@ -1,20 +1,32 @@
 package org.cresplanex.api.state.teamservice.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.cresplanex.api.state.common.entity.ListEntityWithCount;
+import org.cresplanex.api.state.common.enums.PaginationType;
 import org.cresplanex.api.state.common.saga.local.LocalException;
 import org.cresplanex.api.state.common.saga.local.team.NotFoundTeamException;
 import org.cresplanex.api.state.common.service.BaseService;
 import org.cresplanex.api.state.teamservice.entity.TeamEntity;
 import org.cresplanex.api.state.teamservice.entity.TeamUserEntity;
+import org.cresplanex.api.state.teamservice.enums.TeamOnUserSortType;
+import org.cresplanex.api.state.teamservice.enums.TeamSortType;
+import org.cresplanex.api.state.teamservice.enums.TeamWithUsersSortType;
+import org.cresplanex.api.state.teamservice.enums.UserOnTeamSortType;
 import org.cresplanex.api.state.teamservice.exception.AlreadyExistTeamUserException;
 import org.cresplanex.api.state.teamservice.exception.TeamNotFoundException;
+import org.cresplanex.api.state.teamservice.filter.team.IsDefaultFilter;
+import org.cresplanex.api.state.teamservice.filter.team.OrganizationFilter;
+import org.cresplanex.api.state.teamservice.filter.team.UsersFilter;
 import org.cresplanex.api.state.teamservice.repository.TeamRepository;
 import org.cresplanex.api.state.teamservice.repository.TeamUserRepository;
 import org.cresplanex.api.state.teamservice.saga.model.team.AddUsersTeamSaga;
 import org.cresplanex.api.state.teamservice.saga.model.team.CreateTeamSaga;
 import org.cresplanex.api.state.teamservice.saga.state.team.AddUsersTeamSagaState;
 import org.cresplanex.api.state.teamservice.saga.state.team.CreateTeamSagaState;
+import org.cresplanex.api.state.teamservice.specification.TeamSpecifications;
 import org.cresplanex.core.saga.orchestration.SagaInstanceFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -40,6 +52,14 @@ public class TeamService extends BaseService {
         return internalFindById(teamId);
     }
 
+    @Transactional(readOnly = true)
+    public TeamEntity findByIdWithUsers(String teamId) {
+        return teamRepository.findByIdWithUsers(teamId).orElseThrow(() -> new TeamNotFoundException(
+                TeamNotFoundException.FindType.BY_ID,
+                teamId
+        ));
+    }
+
     private TeamEntity internalFindById(String teamId) {
         return teamRepository.findById(teamId).orElseThrow(() -> new TeamNotFoundException(
                 TeamNotFoundException.FindType.BY_ID,
@@ -48,8 +68,137 @@ public class TeamService extends BaseService {
     }
 
     @Transactional(readOnly = true)
-    public List<TeamEntity> get() {
-        return teamRepository.findAll();
+    public ListEntityWithCount<TeamEntity> get(
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            TeamSortType sortType,
+            boolean withCount,
+            IsDefaultFilter isDefaultFilter,
+            OrganizationFilter organizationFilter,
+            UsersFilter usersFilter
+    ) {
+        Specification<TeamEntity> spec = Specification.where(
+                TeamSpecifications.withIsDefaultFilter(isDefaultFilter)
+                        .and(TeamSpecifications.withOrganizationFilter(organizationFilter))
+                        .and(TeamSpecifications.withBelongUsersFilter(usersFilter)));
+
+        List<TeamEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    teamRepository.findList(spec, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> teamRepository.findList(spec, sortType); // TODO: Implement cursor pagination
+            default -> teamRepository.findList(spec, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = teamRepository.countList(spec);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ListEntityWithCount<TeamEntity> getWithUsers(
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            TeamWithUsersSortType sortType,
+            boolean withCount,
+            IsDefaultFilter isDefaultFilter,
+            OrganizationFilter organizationFilter,
+            UsersFilter usersFilter
+    ) {
+        Specification<TeamEntity> spec = Specification.where(
+                TeamSpecifications.withIsDefaultFilter(isDefaultFilter)
+                        .and(TeamSpecifications.withOrganizationFilter(organizationFilter))
+                        .and(TeamSpecifications.withBelongUsersFilter(usersFilter)));
+
+        List<TeamEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    teamRepository.findListWithUsers(spec, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> teamRepository.findListWithUsers(spec, sortType); // TODO: Implement cursor pagination
+            default -> teamRepository.findListWithUsers(spec, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = teamRepository.countList(spec);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ListEntityWithCount<TeamUserEntity> getUsersOnTeam(
+            String teamId,
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            UserOnTeamSortType sortType,
+            boolean withCount
+    ) {
+        Specification<TeamEntity> spec = Specification.where(null);
+
+        List<TeamUserEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    teamUserRepository.findUsersListOnTeamWithOffsetPagination(spec, teamId, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> teamUserRepository.findUsersListOnTeam(spec, teamId, sortType); // TODO: Implement cursor pagination
+            default -> teamUserRepository.findUsersListOnTeam(spec, teamId, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = teamUserRepository.countUsersListOnTeam(spec, teamId);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ListEntityWithCount<TeamUserEntity> getTeamsOnUser(
+            String userId,
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            TeamOnUserSortType sortType,
+            boolean withCount
+    ) {
+        Specification<TeamEntity> spec = Specification.where(null);
+
+        List<TeamUserEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    teamUserRepository.findTeamsOnUserWithOffsetPagination(spec, userId, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> teamUserRepository.findTeamsOnUser(spec, userId, sortType); // TODO: Implement cursor pagination
+            default -> teamUserRepository.findTeamsOnUser(spec, userId, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = teamUserRepository.countTeamsOnUser(spec, userId);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<TeamEntity> getByTeamIds(
+            List<String> teamIds,
+            TeamSortType sortType
+    ) {
+        return teamRepository.findListByTeamIds(teamIds, sortType);
     }
 
     @Transactional
