@@ -49,6 +49,13 @@ public interface TeamRepository extends JpaRepository<TeamEntity, String>, JpaSp
             "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
     List<TeamEntity> findListByTeamIds(List<String> teamIds, TeamSortType sortType);
 
+    @Query("SELECT o FROM TeamEntity o LEFT JOIN FETCH o.teamUsers WHERE o.teamId IN :teamIds ORDER BY " +
+            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
+            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
+            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
+            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
+    List<TeamEntity> findListByTeamIdsWithUsers(List<String> teamIds, TeamWithUsersSortType sortType);
+
     @Query("SELECT o FROM TeamEntity o ORDER BY " +
             "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
             "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +

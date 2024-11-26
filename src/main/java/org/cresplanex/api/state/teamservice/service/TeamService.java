@@ -201,6 +201,14 @@ public class TeamService extends BaseService {
         return teamRepository.findListByTeamIds(teamIds, sortType);
     }
 
+    @Transactional(readOnly = true)
+    public List<TeamEntity> getByTeamIdsWithUsers(
+            List<String> teamIds,
+            TeamWithUsersSortType sortType
+    ) {
+        return teamRepository.findListByTeamIdsWithUsers(teamIds, sortType);
+    }
+
     @Transactional
     public String beginCreate(String operatorId, TeamEntity team, List<TeamUserEntity> users) {
         CreateTeamSagaState.InitialData initialData = CreateTeamSagaState.InitialData.builder()

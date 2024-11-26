@@ -163,6 +163,25 @@ public class TeamServiceHandler extends TeamServiceGrpc.TeamServiceImplBase {
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+    
+    @Override
+    public void getPluralTeamsWithUsers(GetPluralTeamsWithUsersRequest request, StreamObserver<GetPluralTeamsWithUsersResponse> responseObserver) {
+        TeamWithUsersSortType sortType = switch (request.getSort().getOrderField()) {
+            case TEAM_WITH_USERS_ORDER_FIELD_NAME -> (request.getSort().getOrder() == SortOrder.SORT_ORDER_ASC) ?
+                    TeamWithUsersSortType.NAME_ASC : TeamWithUsersSortType.NAME_DESC;
+            default -> (request.getSort().getOrder() == SortOrder.SORT_ORDER_ASC) ?
+                    TeamWithUsersSortType.CREATED_AT_ASC : TeamWithUsersSortType.CREATED_AT_DESC;
+        };
+        List<TeamWithUsers> organizationProtos = this.teamService.getByTeamIdsWithUsers(
+                        request.getTeamIdsList(), sortType).stream()
+                .map(ProtoMapper::convertWithUsers).toList();
+        GetPluralTeamsWithUsersResponse response = GetPluralTeamsWithUsersResponse.newBuilder()
+                .addAllTeams(organizationProtos)
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
 
     @Override
     public void getUsersOnTeam(GetUsersOnTeamRequest request, StreamObserver<GetUsersOnTeamResponse> responseObserver) {
