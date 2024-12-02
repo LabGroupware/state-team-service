@@ -26,7 +26,10 @@ import org.cresplanex.api.state.teamservice.saga.state.team.CreateTeamSagaState;
 import org.cresplanex.api.state.teamservice.specification.TeamSpecifications;
 import org.cresplanex.core.saga.orchestration.SagaInstanceFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -84,12 +87,15 @@ public class TeamService extends BaseService {
                         .and(TeamSpecifications.withOrganizationFilter(organizationFilter))
                         .and(TeamSpecifications.withBelongUsersFilter(usersFilter)));
 
-        List<TeamEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    teamRepository.findList(spec, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> teamRepository.findList(spec, sortType); // TODO: Implement cursor pagination
-            default -> teamRepository.findList(spec, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TeamEntity> data = teamRepository.findList(spec, pageable);
 
         int count = 0;
         if (withCount){
@@ -118,12 +124,15 @@ public class TeamService extends BaseService {
                         .and(TeamSpecifications.withOrganizationFilter(organizationFilter))
                         .and(TeamSpecifications.withBelongUsersFilter(usersFilter)));
 
-        List<TeamEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    teamRepository.findListWithUsers(spec, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> teamRepository.findListWithUsers(spec, sortType); // TODO: Implement cursor pagination
-            default -> teamRepository.findListWithUsers(spec, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TeamEntity> data = teamRepository.findListWithUsers(spec, pageable);
 
         int count = 0;
         if (withCount){
@@ -145,18 +154,22 @@ public class TeamService extends BaseService {
             UserOnTeamSortType sortType,
             boolean withCount
     ) {
-        Specification<TeamEntity> spec = Specification.where(null);
+        Specification<TeamUserEntity> spec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("teamId"), teamId);
 
-        List<TeamUserEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    teamUserRepository.findUsersListOnTeamWithOffsetPagination(spec, teamId, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> teamUserRepository.findUsersListOnTeam(spec, teamId, sortType); // TODO: Implement cursor pagination
-            default -> teamUserRepository.findUsersListOnTeam(spec, teamId, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TeamUserEntity> data = teamUserRepository.findList(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = teamUserRepository.countUsersListOnTeam(spec, teamId);
+            count = teamUserRepository.countList(spec);
         }
         return new ListEntityWithCount<>(
                 data,
@@ -174,18 +187,22 @@ public class TeamService extends BaseService {
             TeamOnUserSortType sortType,
             boolean withCount
     ) {
-        Specification<TeamEntity> spec = Specification.where(null);
+        Specification<TeamUserEntity> spec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("userId"), userId);
 
-        List<TeamUserEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    teamUserRepository.findTeamsOnUserWithOffsetPagination(spec, userId, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> teamUserRepository.findTeamsOnUser(spec, userId, sortType); // TODO: Implement cursor pagination
-            default -> teamUserRepository.findTeamsOnUser(spec, userId, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TeamUserEntity> data = teamUserRepository.findListWithTeam(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = teamUserRepository.countTeamsOnUser(spec, userId);
+            count = teamUserRepository.countList(spec);
         }
         return new ListEntityWithCount<>(
                 data,
@@ -198,7 +215,9 @@ public class TeamService extends BaseService {
             List<String> teamIds,
             TeamSortType sortType
     ) {
-        return teamRepository.findListByTeamIds(teamIds, sortType);
+        Specification<TeamEntity> spec = (root, query, criteriaBuilder) ->
+                root.get("teamId").in(teamIds);
+        return teamRepository.findList(spec, Pageable.unpaged(createSort(sortType)));
     }
 
     @Transactional(readOnly = true)
@@ -206,7 +225,9 @@ public class TeamService extends BaseService {
             List<String> teamIds,
             TeamWithUsersSortType sortType
     ) {
-        return teamRepository.findListByTeamIdsWithUsers(teamIds, sortType);
+        Specification<TeamEntity> spec = (root, query, criteriaBuilder) ->
+                root.get("teamId").in(teamIds);
+        return teamRepository.findListWithUsers(spec, Pageable.unpaged(createSort(sortType)));
     }
 
     @Transactional
@@ -325,5 +346,41 @@ public class TeamService extends BaseService {
 
     public void undoAddUsers(List<String> teamUserIds) {
         teamUserRepository.deleteAllById(teamUserIds);
+    }
+
+    public Sort createSort(TeamSortType sortType) {
+        return switch (sortType) {
+            case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+            case NAME_ASC -> Sort.by(Sort.Order.asc("name"), Sort.Order.desc("createdAt"));
+            case NAME_DESC -> Sort.by(Sort.Order.desc("name"), Sort.Order.desc("createdAt"));
+        };
+    }
+
+    public Sort createSort(TeamWithUsersSortType sortType) {
+        return switch (sortType) {
+            case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+            case NAME_ASC -> Sort.by(Sort.Order.asc("name"), Sort.Order.desc("createdAt"));
+            case NAME_DESC -> Sort.by(Sort.Order.desc("name"), Sort.Order.desc("createdAt"));
+        };
+    }
+
+    public Sort createSort(UserOnTeamSortType sortType) {
+        return switch (sortType) {
+            case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+        };
+    }
+
+    public Sort createSort(TeamOnUserSortType sortType) {
+        return switch (sortType) {
+            case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+            case NAME_ASC -> Sort.by(Sort.Order.asc("team.name"), Sort.Order.desc("createdAt"));
+            case NAME_DESC -> Sort.by(Sort.Order.desc("team.name"), Sort.Order.desc("createdAt"));
+            case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("team.createdAt"), Sort.Order.desc("createdAt"));
+            case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("team.createdAt"), Sort.Order.desc("createdAt"));
+        };
     }
 }

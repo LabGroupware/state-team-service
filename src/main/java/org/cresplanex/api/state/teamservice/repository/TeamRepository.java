@@ -42,47 +42,11 @@ public interface TeamRepository extends JpaRepository<TeamEntity, String>, JpaSp
     @Query("SELECT o FROM TeamEntity o WHERE o.organizationId = :organizationId AND o.isDefault = :isDefault")
     Optional<TeamEntity> findByOrganizationIdAndIsDefault(String organizationId, boolean isDefault);
 
-    @Query("SELECT o FROM TeamEntity o WHERE o.teamId IN :teamIds ORDER BY " +
-            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
-            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
-            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
-            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
-    List<TeamEntity> findListByTeamIds(List<String> teamIds, TeamSortType sortType);
+    @Query("SELECT o FROM TeamEntity o")
+    List<TeamEntity> findList(Specification<TeamEntity> specification, Pageable pageable);
 
-    @Query("SELECT o FROM TeamEntity o LEFT JOIN FETCH o.teamUsers WHERE o.teamId IN :teamIds ORDER BY " +
-            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
-            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
-            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
-            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
-    List<TeamEntity> findListByTeamIdsWithUsers(List<String> teamIds, TeamWithUsersSortType sortType);
-
-    @Query("SELECT o FROM TeamEntity o ORDER BY " +
-            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
-            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
-            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
-            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
-    List<TeamEntity> findList(Specification<TeamEntity> specification, TeamSortType sortType);
-
-    @Query("SELECT o FROM TeamEntity o ORDER BY " +
-            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
-            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
-            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
-            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
-    List<TeamEntity> findList(Specification<TeamEntity> specification, TeamSortType sortType, Pageable pageable);
-
-    @Query("SELECT o FROM TeamEntity o LEFT JOIN FETCH o.teamUsers ORDER BY " +
-            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
-            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
-            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
-            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
-    List<TeamEntity> findListWithUsers(Specification<TeamEntity> specification, TeamWithUsersSortType sortType);
-
-    @Query("SELECT o FROM TeamEntity o LEFT JOIN FETCH o.teamUsers ORDER BY " +
-            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
-            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
-            "CASE WHEN :sortType = 'NAME_ASC' THEN o.name END ASC, " +
-            "CASE WHEN :sortType = 'NAME_DESC' THEN o.name END DESC")
-    List<TeamEntity> findListWithUsers(Specification<TeamEntity> specification, TeamWithUsersSortType sortType, Pageable pageable);
+    @Query("SELECT o FROM TeamEntity o LEFT JOIN FETCH o.teamUsers")
+    List<TeamEntity> findListWithUsers(Specification<TeamEntity> specification, Pageable pageable);
 
     @Query("SELECT COUNT(o) FROM TeamEntity o")
     int countList(Specification<TeamEntity> specification);
