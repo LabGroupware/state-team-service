@@ -348,7 +348,7 @@ public class TeamService extends BaseService {
         teamUserRepository.deleteAllById(teamUserIds);
     }
 
-    public Sort createSort(TeamSortType sortType) {
+    private Sort createSort(TeamSortType sortType) {
         return switch (sortType) {
             case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
@@ -357,7 +357,7 @@ public class TeamService extends BaseService {
         };
     }
 
-    public Sort createSort(TeamWithUsersSortType sortType) {
+    private Sort createSort(TeamWithUsersSortType sortType) {
         return switch (sortType) {
             case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
@@ -366,14 +366,14 @@ public class TeamService extends BaseService {
         };
     }
 
-    public Sort createSort(UserOnTeamSortType sortType) {
+    private Sort createSort(UserOnTeamSortType sortType) {
         return switch (sortType) {
             case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
         };
     }
 
-    public Sort createSort(TeamOnUserSortType sortType) {
+    private Sort createSort(TeamOnUserSortType sortType) {
         return switch (sortType) {
             case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
