@@ -146,10 +146,11 @@ public class TeamSagaCommandHandlers {
     ) {
         try {
             CreateDefaultTeamAndAddInitialDefaultTeamUserCommand.Exec command = cmd.getCommand();
+            String description = String.format("Default team for organization %s", command.getOrganizationName());
             TeamEntity team = new TeamEntity();
             team.setOrganizationId(command.getOrganizationId());
             team.setName(ReservedTeamName.DEFAULT);
-            team.setDescription(String.format("Default team for organization %s", command.getOrganizationName()));
+            team.setDescription(description);
             team.setDefault(true);
             List<TeamUserEntity> users = command.getUsers().stream().map(user -> {
                 TeamUserEntity userEntity = new TeamUserEntity();

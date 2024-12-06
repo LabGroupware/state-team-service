@@ -8,7 +8,9 @@ import org.cresplanex.api.state.common.event.publisher.AggregateDomainEventPubli
 import org.cresplanex.api.state.common.saga.SagaCommandChannel;
 import org.cresplanex.api.state.common.saga.data.team.CreateTeamResultData;
 import org.cresplanex.api.state.common.saga.local.team.AlreadyExistTeamNameInOrganizationException;
+import org.cresplanex.api.state.common.saga.local.team.NotAllowedTeamUsersContainOwnerException;
 import org.cresplanex.api.state.common.saga.local.team.ReservedTeamNameException;
+import org.cresplanex.api.state.common.saga.local.team.WillAddedTeamUserDuplicatedException;
 import org.cresplanex.api.state.common.saga.model.SagaModel;
 import org.cresplanex.api.state.common.saga.reply.organization.OrganizationAndOrganizationUserExistValidateReply;
 import org.cresplanex.api.state.common.saga.reply.team.CreateTeamAndAddInitialTeamUserReply;
@@ -21,6 +23,9 @@ import org.cresplanex.api.state.teamservice.saga.state.team.CreateTeamSagaState;
 import org.cresplanex.api.state.teamservice.service.TeamLocalValidateService;
 import org.cresplanex.core.saga.orchestration.SagaDefinition;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class CreateTeamSaga extends SagaModel<
@@ -43,6 +48,8 @@ public class CreateTeamSaga extends SagaModel<
                 .invokeLocal(this::validateTeam)
                 .onException(ReservedTeamNameException.class, this::failureLocalExceptionPublish)
                 .onException(AlreadyExistTeamNameInOrganizationException.class, this::failureLocalExceptionPublish)
+                .onException(NotAllowedTeamUsersContainOwnerException.class, this::failureLocalExceptionPublish)
+                .onException(WillAddedTeamUserDuplicatedException.class, this::failureLocalExceptionPublish)
                 .step()
                 .invokeParticipant(
                         organizationService.organizationUserExistValidateCommand,
@@ -118,8 +125,15 @@ public class CreateTeamSaga extends SagaModel<
         this.teamLocalService.validateCreatedTeam(
                 state.getInitialData().getOrganizationId(),
                 state.getInitialData().getName(),
-                state.getInitialData().getDescription()
+                state.getInitialData().getDescription(),
+                state.getOperatorId(),
+                state.getInitialData().getUsers().stream().map(CreateTeamSagaState.InitialData.User::getUserId).toList()
         );
+
+        List<CreateTeamSagaState.InitialData.User> list = new ArrayList<>();
+        list.add(new CreateTeamSagaState.InitialData.User(state.getOperatorId()));
+        list.addAll(state.getInitialData().getUsers());
+        state.getInitialData().setUsers(list);
 
         this.localProcessedEventPublish(
                 state, TeamServiceApplicationCode.SUCCESS, "Team validated"

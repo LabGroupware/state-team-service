@@ -8,6 +8,7 @@ import org.cresplanex.api.state.common.saga.SagaCommandChannel;
 import org.cresplanex.api.state.common.saga.data.team.AddUsersTeamResultData;
 import org.cresplanex.api.state.common.saga.local.team.NotAllowedOnDefaultTeamException;
 import org.cresplanex.api.state.common.saga.local.team.NotFoundTeamException;
+import org.cresplanex.api.state.common.saga.local.team.WillAddedTeamUserDuplicatedException;
 import org.cresplanex.api.state.common.saga.model.SagaModel;
 import org.cresplanex.api.state.common.saga.reply.organization.OrganizationAndOrganizationUserExistValidateReply;
 import org.cresplanex.api.state.common.saga.reply.team.AddUsersTeamReply;
@@ -43,6 +44,7 @@ public class AddUsersTeamSaga extends SagaModel<
                 .invokeLocal(this::validateTeam)
                 .onException(NotFoundTeamException.class, this::failureLocalExceptionPublish)
                 .onException(NotAllowedOnDefaultTeamException.class, this::failureLocalExceptionPublish)
+                .onException(WillAddedTeamUserDuplicatedException.class, this::failureLocalExceptionPublish)
                 .step()
                 .invokeParticipant(
                         organizationService.organizationUserExistValidateCommand,
@@ -117,6 +119,7 @@ public class AddUsersTeamSaga extends SagaModel<
             throws NotFoundTeamException {
         TeamEntity team = this.teamLocalService.validateTeam(
                 state.getInitialData().getTeamId(),
+                state.getInitialData().getUsers().stream().map(AddUsersTeamSagaState.InitialData.User::getUserId).toList(),
                 ActionOnTeam.ADD_USERS
         );
         state.setOrganizationId(team.getOrganizationId());

@@ -47,7 +47,6 @@ public class TeamEntity extends BaseEntity<TeamEntity> {
     private String name;
 
     @Column(name = "description")
-    @Lob
     private String description;
 
     @Column(name = "is_default", nullable = false)
