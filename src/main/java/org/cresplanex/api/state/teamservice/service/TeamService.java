@@ -24,7 +24,9 @@ import org.cresplanex.api.state.teamservice.saga.model.team.CreateTeamSaga;
 import org.cresplanex.api.state.teamservice.saga.state.team.AddUsersTeamSagaState;
 import org.cresplanex.api.state.teamservice.saga.state.team.CreateTeamSagaState;
 import org.cresplanex.api.state.teamservice.specification.TeamSpecifications;
+import org.cresplanex.api.state.teamservice.specification.TeamUserSpecifications;
 import org.cresplanex.core.saga.orchestration.SagaInstanceFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -95,14 +97,14 @@ public class TeamService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TeamEntity> data = teamRepository.findList(spec, pageable);
+        Page<TeamEntity> data = teamRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = teamRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -122,7 +124,8 @@ public class TeamService extends BaseService {
         Specification<TeamEntity> spec = Specification.where(
                 TeamSpecifications.withIsDefaultFilter(isDefaultFilter)
                         .and(TeamSpecifications.withOrganizationFilter(organizationFilter))
-                        .and(TeamSpecifications.withBelongUsersFilter(usersFilter)));
+                        .and(TeamSpecifications.withBelongUsersFilter(usersFilter))
+                        .and(TeamSpecifications.fetchTeamUsers()));
 
         Sort sort = createSort(sortType);
 
@@ -132,14 +135,14 @@ public class TeamService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TeamEntity> data = teamRepository.findListWithUsers(spec, pageable);
+        Page<TeamEntity> data = teamRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = teamRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -154,8 +157,8 @@ public class TeamService extends BaseService {
             UserOnTeamSortType sortType,
             boolean withCount
     ) {
-        Specification<TeamUserEntity> spec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.equal(root.get("teamId"), teamId);
+        Specification<TeamUserEntity> spec = Specification
+                .where(TeamUserSpecifications.whereTeamId(teamId));
 
         Sort sort = createSort(sortType);
 
@@ -165,14 +168,14 @@ public class TeamService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TeamUserEntity> data = teamUserRepository.findList(spec, pageable);
+        Page<TeamUserEntity> data = teamUserRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = teamUserRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -187,8 +190,9 @@ public class TeamService extends BaseService {
             TeamOnUserSortType sortType,
             boolean withCount
     ) {
-        Specification<TeamUserEntity> spec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.equal(root.get("userId"), userId);
+        Specification<TeamUserEntity> spec = Specification
+                .where(TeamUserSpecifications.whereUserId(userId)
+                        .and(TeamUserSpecifications.fetchTeam()));
 
         Sort sort = createSort(sortType);
 
@@ -198,14 +202,14 @@ public class TeamService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TeamUserEntity> data = teamUserRepository.findListWithTeam(spec, pageable);
+        Page<TeamUserEntity> data = teamUserRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = teamUserRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -215,9 +219,11 @@ public class TeamService extends BaseService {
             List<String> teamIds,
             TeamSortType sortType
     ) {
-        Specification<TeamEntity> spec = (root, query, criteriaBuilder) ->
-                root.get("teamId").in(teamIds);
-        return teamRepository.findList(spec, Pageable.unpaged(createSort(sortType)));
+        Specification<TeamEntity> spec = Specification.where(
+                TeamSpecifications.whereTeamIds(teamIds)
+        );
+
+        return teamRepository.findAll(spec, createSort(sortType));
     }
 
     @Transactional(readOnly = true)
@@ -225,13 +231,16 @@ public class TeamService extends BaseService {
             List<String> teamIds,
             TeamWithUsersSortType sortType
     ) {
-        Specification<TeamEntity> spec = (root, query, criteriaBuilder) ->
-                root.get("teamId").in(teamIds);
-        return teamRepository.findListWithUsers(spec, Pageable.unpaged(createSort(sortType)));
+        Specification<TeamEntity> spec = Specification.where(
+                TeamSpecifications.whereTeamIds(teamIds)
+        ).and(TeamSpecifications.fetchTeamUsers());
+
+        return teamRepository.findAll(spec, createSort(sortType));
     }
 
     @Transactional
     public String beginCreate(String operatorId, TeamEntity team, List<TeamUserEntity> users) {
+        log.info("beginCreate: {}", team.getOrganizationId());
         CreateTeamSagaState.InitialData initialData = CreateTeamSagaState.InitialData.builder()
                 .name(team.getName())
                 .description(team.getDescription())
@@ -321,18 +330,36 @@ public class TeamService extends BaseService {
                     .toList();
             throw new AlreadyExistTeamUserException(teamId, existUserIds);
         }
+        TeamEntity team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new TeamNotFoundException(
+                        TeamNotFoundException.FindType.BY_ID,
+                        teamId
+                ));
+        users = users.stream()
+                .peek(user -> user.setTeam(team))
+                .toList();
         return teamUserRepository.saveAll(users);
     }
 
-    public List<TeamUserEntity> addUsersToDefault(String operatorId, String teamId, List<TeamUserEntity> users) {
-        TeamEntity teamEntity = teamRepository.findByOrganizationIdAndIsDefault(teamId, true).orElseThrow(() -> new TeamNotFoundException(
+    public List<TeamUserEntity> addUsersToDefault(String operatorId, String organizationId, List<TeamUserEntity> users) {
+        TeamEntity teamEntity = teamRepository.findByOrganizationIdAndIsDefault(organizationId, true).orElseThrow(() -> new TeamNotFoundException(
                 TeamNotFoundException.FindType.BY_ORGANIZATION_ID_AND_IS_DEFAULT,
-                teamId
+                organizationId
         ));
+        List<TeamUserEntity> existUsers = teamUserRepository.
+                findAllByTeamIdAndUserIds(teamEntity.getTeamId(), users.stream()
+                        .map(TeamUserEntity::getUserId)
+                        .toList());
+        if (!existUsers.isEmpty()) {
+            List<String> existUserIds = existUsers.stream()
+                    .map(TeamUserEntity::getUserId)
+                    .toList();
+            throw new AlreadyExistTeamUserException(teamEntity.getTeamId(), existUserIds);
+        }
         users = users.stream()
                 .peek(user -> user.setTeam(teamEntity))
                 .toList();
-        return addUsers(operatorId, teamEntity.getTeamId(), users);
+        return teamUserRepository.saveAll(users);
     }
 
     public void undoCreate(String teamId) {

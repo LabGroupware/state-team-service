@@ -215,7 +215,6 @@ public class TeamSagaCommandHandlers {
             List<TeamUserEntity> users = command.getUsers().stream().map(user -> {
                 TeamUserEntity userEntity = new TeamUserEntity();
                 userEntity.setUserId(user.getUserId());
-                userEntity.setTeamId(command.getTeamId());
                 return userEntity;
             }).toList();
 

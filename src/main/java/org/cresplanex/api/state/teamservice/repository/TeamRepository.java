@@ -1,10 +1,6 @@
 package org.cresplanex.api.state.teamservice.repository;
 
 import org.cresplanex.api.state.teamservice.entity.TeamEntity;
-import org.cresplanex.api.state.teamservice.enums.TeamSortType;
-import org.cresplanex.api.state.teamservice.enums.TeamWithUsersSortType;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -41,13 +37,4 @@ public interface TeamRepository extends JpaRepository<TeamEntity, String>, JpaSp
      */
     @Query("SELECT o FROM TeamEntity o WHERE o.organizationId = :organizationId AND o.isDefault = :isDefault")
     Optional<TeamEntity> findByOrganizationIdAndIsDefault(String organizationId, boolean isDefault);
-
-    @Query("SELECT o FROM TeamEntity o")
-    List<TeamEntity> findList(Specification<TeamEntity> specification, Pageable pageable);
-
-    @Query("SELECT o FROM TeamEntity o LEFT JOIN FETCH o.teamUsers")
-    List<TeamEntity> findListWithUsers(Specification<TeamEntity> specification, Pageable pageable);
-
-    @Query("SELECT COUNT(o) FROM TeamEntity o")
-    int countList(Specification<TeamEntity> specification);
 }

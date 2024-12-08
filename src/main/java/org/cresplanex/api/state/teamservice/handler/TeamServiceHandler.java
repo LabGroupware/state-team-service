@@ -3,6 +3,7 @@ package org.cresplanex.api.state.teamservice.handler;
 import build.buf.gen.cresplanex.nova.v1.Count;
 import build.buf.gen.cresplanex.nova.v1.SortOrder;
 import build.buf.gen.team.v1.*;
+import lombok.extern.slf4j.Slf4j;
 import org.cresplanex.api.state.common.entity.ListEntityWithCount;
 import org.cresplanex.api.state.common.enums.PaginationType;
 import org.cresplanex.api.state.teamservice.entity.TeamEntity;
@@ -23,6 +24,7 @@ import org.cresplanex.api.state.teamservice.service.TeamService;
 
 import java.util.List;
 
+@Slf4j
 @RequiredArgsConstructor
 @GrpcService
 public class TeamServiceHandler extends TeamServiceGrpc.TeamServiceImplBase {
