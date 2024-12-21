@@ -240,7 +240,6 @@ public class TeamService extends BaseService {
 
     @Transactional
     public String beginCreate(String operatorId, TeamEntity team, List<TeamUserEntity> users) {
-        log.info("beginCreate: {}", team.getOrganizationId());
         CreateTeamSagaState.InitialData initialData = CreateTeamSagaState.InitialData.builder()
                 .name(team.getName())
                 .description(team.getDescription())
