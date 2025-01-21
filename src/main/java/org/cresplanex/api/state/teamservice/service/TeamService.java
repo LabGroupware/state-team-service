@@ -38,7 +38,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -124,8 +126,8 @@ public class TeamService extends BaseService {
         Specification<TeamEntity> spec = Specification.where(
                 TeamSpecifications.withIsDefaultFilter(isDefaultFilter)
                         .and(TeamSpecifications.withOrganizationFilter(organizationFilter))
-                        .and(TeamSpecifications.withBelongUsersFilter(usersFilter))
-                        .and(TeamSpecifications.fetchTeamUsers()));
+                        .and(TeamSpecifications.withBelongUsersFilter(usersFilter)));
+//                        .and(TeamSpecifications.fetchTeamUsers()));
 
         Sort sort = createSort(sortType);
 
@@ -136,6 +138,32 @@ public class TeamService extends BaseService {
         };
 
         Page<TeamEntity> data = teamRepository.findAll(spec, pageable);
+
+        List<String> teamIds = data.getContent().stream()
+                .map(TeamEntity::getTeamId)
+                .toList();
+
+        Specification<TeamUserEntity> userSpec = Specification.where(
+                TeamUserSpecifications.whereTeamIds(teamIds));
+
+        List<TeamUserEntity> users = teamUserRepository.findAll(userSpec);
+
+        Map<String, List<TeamUserEntity>> userMap = new HashMap<>();
+
+        users.forEach(user -> {
+            if (userMap.containsKey(user.getTeamId())) {
+                userMap.get(user.getTeamId()).add(user);
+            } else {
+                List<TeamUserEntity> list = new ArrayList<>();
+                list.add(user);
+                userMap.put(user.getTeamId(), list);
+            }
+        });
+
+        data.getContent().forEach(organization -> {
+            organization.setTeamUsers(userMap.get(organization.getOrganizationId()));
+        });
+
 
         int count = 0;
         if (withCount){
