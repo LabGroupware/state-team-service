@@ -160,8 +160,8 @@ public class TeamService extends BaseService {
             }
         });
 
-        data.getContent().forEach(organization -> {
-            organization.setTeamUsers(userMap.get(organization.getOrganizationId()));
+        data.getContent().forEach(team -> {
+            team.setTeamUsers(userMap.get(team.getTeamId()));
         });
 
 

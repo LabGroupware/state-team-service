@@ -129,17 +129,17 @@ public class TeamServiceHandler extends TeamServiceGrpc.TeamServiceImplBase {
                 request.getFilterUser().getHasValue(), request.getFilterUser().getAny(), request.getFilterUser().getUserIdsList()
         );
 
-        ListEntityWithCount<TeamEntity> organizations = teamService.getWithUsers(
+        ListEntityWithCount<TeamEntity> teams = teamService.getWithUsers(
                 paginationType, request.getPagination().getLimit(), request.getPagination().getOffset(),
                 request.getPagination().getCursor(), sortType, request.getWithCount(), isDefaultFilter, organizationFilter, usersFilter);
 
-        List<TeamWithUsers> organizationProtos = organizations.getData().stream()
+        List<TeamWithUsers> organizationProtos = teams.getData().stream()
                 .map(ProtoMapper::convertWithUsers).toList();
         GetTeamsWithUsersResponse response = GetTeamsWithUsersResponse.newBuilder()
                 .addAllTeams(organizationProtos)
                 .setCount(
                         Count.newBuilder().setIsValid(request.getWithCount())
-                                .setCount(organizations.getCount()).build()
+                                .setCount(teams.getCount()).build()
                 )
                 .build();
 
