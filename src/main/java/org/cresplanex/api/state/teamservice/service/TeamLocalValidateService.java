@@ -63,8 +63,9 @@ public class TeamLocalValidateService extends BaseService {
                     throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.UPDATE_PROFILE);
                 case ActionOnTeam.DELETE:
                     throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.DELETE);
-                case ActionOnTeam.ADD_USERS:
-                    throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.ADD_USERS);
+                    // TODO: Uncomment this code after implementing the feature
+//                case ActionOnTeam.ADD_USERS:
+//                    throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.ADD_USERS);
                 case ActionOnTeam.REMOVE_USERS:
                     throw new NotAllowedOnDefaultTeamException(List.of(teamId), ActionOnTeam.REMOVE_USERS);
             }
